@@ -6,6 +6,8 @@ export const MIRRI_API_BASE = 'https://mirri.link/api'
 export interface UploadOptions {
   filename: string
   contentType: string
+  /** Number of seconds before the file expires. Omit for no expiry. */
+  expiry?: number
 }
 
 export interface UploadResult {
@@ -24,6 +26,11 @@ export async function upload(
   options: UploadOptions,
 ): Promise<UploadResult> {
   if (isMarkdownContentType(options.contentType)) {
+    if (options.expiry !== undefined) {
+      throw new Error(
+        'expiry is not supported for markdown uploads (text/markdown is rendered via the markdown API)',
+      )
+    }
     return uploadMarkdown(bodyToString(body))
   }
 
@@ -31,6 +38,9 @@ export async function upload(
     filename: options.filename,
     contentType: options.contentType,
   })
+  if (options.expiry !== undefined) {
+    params.set('expiry', String(options.expiry))
+  }
 
   const getUrlRes = await fetch(`${MIRRI_API_BASE}/get-url?${params}`)
   if (!getUrlRes.ok) {
@@ -89,7 +99,31 @@ export async function uploadFile(
   const data = await readFile(path)
   const filename = options.filename ?? basename(path)
   const contentType = options.contentType ?? guessContentType(filename)
-  return upload(data, { filename, contentType })
+  return upload(data, { filename, contentType, expiry: options.expiry })
+}
+
+/**
+ * Parse a duration string like "30s", "5m", "2h", "2d", "1w" into seconds.
+ * A bare number is interpreted as seconds.
+ */
+export function parseDuration(input: string): number {
+  const match = /^(\d+)([smhdwy])?$/.exec(input.trim())
+  if (!match) {
+    throw new Error(
+      `Invalid duration: "${input}" (expected e.g. "30s", "5m", "2h", "2d", "1w", "1y")`,
+    )
+  }
+  const value = Number(match[1])
+  const unit = match[2] ?? 's'
+  const multipliers: Record<string, number> = {
+    s: 1,
+    m: 60,
+    h: 3600,
+    d: 86400,
+    w: 604800,
+    y: 31536000,
+  }
+  return value * multipliers[unit]!
 }
 
 const MIME_TYPES: Record<string, string> = {

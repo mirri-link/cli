@@ -24,6 +24,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test:integration": "node --test test/integration.test.js",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

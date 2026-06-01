@@ -37,25 +37,35 @@ cat data.json | mirri -f data.json -t application/json
 
 ### Options
 
-| Flag                       | Default                                          | Description           |
-| -------------------------- | ------------------------------------------------ | --------------------- |
-| `-f`, `--filename <name>`  | basename of path, or `file.txt` for stdin        | Filename to upload as |
-| `-t`, `--content-type <t>` | guessed from filename, or `text/plain` for stdin | MIME type             |
-| `-h`, `--help`             |                                                  | Show help             |
+| Flag                       | Default                                          | Description                                                      |
+| -------------------------- | ------------------------------------------------ | ---------------------------------------------------------------- |
+| `-f`, `--filename <name>`  | basename of path, or `file.txt` for stdin        | Filename to upload as                                            |
+| `-t`, `--content-type <t>` | guessed from filename, or `text/plain` for stdin | MIME type                                                        |
+| `-e`, `--expiry <dur>`     | _(no expiry)_                                    | Expire after duration (e.g. `30s`, `5m`, `2h`, `2d`, `1w`, `1y`) |
+| `-h`, `--help`             |                                                  | Show help                                                        |
+
+```bash
+mirri ./screenshot.png --expiry 2d
+cat data.json | mirri -f data.json -t application/json -e 1h
+```
 
 ### Markdown handling
 
 Any upload whose content-type is `text/markdown` (including any `.md` or
 `.markdown` file) is routed through mirri.link's markdown API, which renders
 the content to a styled HTML page rather than serving the raw source.
+Expiry is not supported for markdown uploads.
 
 ## Library
 
 ```ts
-import { uploadFile, upload, uploadMarkdown } from 'mirri-link'
+import { uploadFile, upload, uploadMarkdown, parseDuration } from 'mirri-link'
 
 // Upload a file from disk
 const { publicUrl } = await uploadFile('./image.png')
+
+// Upload a file that expires in 2 days
+await uploadFile('./report.pdf', { expiry: parseDuration('2d') })
 
 // Upload a buffer or string with explicit metadata
 const result = await upload(Buffer.from('hello'), {
@@ -72,13 +82,20 @@ const md = await uploadMarkdown('# Hello\n\nThis is a test.')
 #### `uploadFile(path, options?)`
 
 Reads a file from disk and uploads it. The filename and content-type are
-inferred from the path unless overridden.
+inferred from the path unless overridden. Accepts optional `expiry` (seconds).
 
 #### `upload(body, options)`
 
 Uploads a `Buffer`, `Uint8Array`, `ArrayBuffer`, or `string` with explicit
-`filename` and `contentType`. Automatically routes through the markdown API
-when `contentType` is `text/markdown`.
+`filename` and `contentType`. Accepts optional `expiry` (seconds).
+Automatically routes through the markdown API when `contentType` is
+`text/markdown`.
+
+#### `parseDuration(input)`
+
+Parses a duration string like `"30s"`, `"5m"`, `"2h"`, `"2d"`, `"1w"` (or a
+bare number of seconds) into a number of seconds. Useful for converting
+human-friendly input into the `expiry` option.
 
 #### `uploadMarkdown(content)`
 
