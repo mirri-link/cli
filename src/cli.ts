@@ -6,6 +6,8 @@ interface ParsedArgs {
   filename?: string
   contentType?: string
   expiry?: string
+  open: boolean
+  copy: boolean
   help: boolean
 }
 
@@ -20,11 +22,14 @@ Options:
   -f, --filename <name>            Filename to use (default: basename of path, or "file.txt" for stdin)
   -t, --content-type <type>        Content-Type (default: guessed from filename, or "text/plain" for stdin)
   -e, --expiry <duration>          Expire the file after this duration (e.g. 30s, 5m, 2h, 2d, 1w, 1y). No expiry by default.
+  -o, --open                       Open the uploaded file's URL in the browser
+  -c, --copy                       Copy the uploaded file's URL to the clipboard
   -h, --help                       Show this help
 
 Examples:
   mirri ./report.pdf
   mirri ./screenshot.png --expiry 2d
+  mirri ./report.pdf -oc
   echo "# Hello" | mirri --filename hello.md
   cat data.json | mirri -f data.json -t application/json -e 1h
 
@@ -34,13 +39,20 @@ for markdown uploads.
 `
 
 function parseArgs(argv: string[]): ParsedArgs {
-  const out: ParsedArgs = { help: false }
+  const out: ParsedArgs = { open: false, copy: false, help: false }
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!
 
     if (arg === '--help' || arg === '-h') {
       out.help = true
+    } else if (arg === '--open' || arg === '-o') {
+      out.open = true
+    } else if (arg === '--copy' || arg === '-c') {
+      out.copy = true
+    } else if (/^-[oc]{2,}$/.test(arg)) {
+      if (arg.includes('o')) out.open = true
+      if (arg.includes('c')) out.copy = true
     } else if (arg === '--filename' || arg === '-f') {
       const value = argv[++i]
       if (value === undefined) throw new Error(`Missing value for ${arg}`)
@@ -111,6 +123,21 @@ async function main(): Promise<void> {
   }
 
   process.stdout.write(result.publicUrl + '\n')
+
+  if (args.copy) {
+    try {
+      const { default: clipboard } = await import('clipboardy')
+      await clipboard.write(result.publicUrl)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      process.stderr.write(`mirri: could not copy to clipboard: ${message}\n`)
+    }
+  }
+
+  if (args.open) {
+    const { default: open } = await import('open')
+    await open(result.publicUrl)
+  }
 }
 
 main().catch((err: unknown) => {

@@ -42,10 +42,13 @@ cat data.json | mirri -f data.json -t application/json
 | `-f`, `--filename <name>`  | basename of path, or `file.txt` for stdin        | Filename to upload as                                            |
 | `-t`, `--content-type <t>` | guessed from filename, or `text/plain` for stdin | MIME type                                                        |
 | `-e`, `--expiry <dur>`     | _(no expiry)_                                    | Expire after duration (e.g. `30s`, `5m`, `2h`, `2d`, `1w`, `1y`) |
+| `-o`, `--open`             |                                                  | Open the URL in the browser after uploading                      |
+| `-c`, `--copy`             |                                                  | Copy the URL to the clipboard after uploading                    |
 | `-h`, `--help`             |                                                  | Show help                                                        |
 
 ```bash
 mirri ./screenshot.png --expiry 2d
+mirri ./report.pdf --open --copy
 cat data.json | mirri -f data.json -t application/json -e 1h
 ```
 
